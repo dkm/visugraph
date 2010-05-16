@@ -47,7 +47,7 @@ rankfin.close()
 nodes = {}
 neighs_nodes = {}
 
-
+visited_nodes = {}
 ## set to True will use hardcoded image
 debug = False
 
@@ -60,6 +60,10 @@ used_imagesfout = open("usedimags.txt", "w")
 
 for node,node_depth in pending_nodes:
     print "start of ",node, "[", node_depth, "] (", graph_depth, ") node depth:", node_depth
+
+    if node in nodes:
+        print "Already seen, skipping"
+        continue
 
     rank_line = ranks[node].split()
     node_id = int(rank_line[0])
