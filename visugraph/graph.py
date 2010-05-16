@@ -17,6 +17,9 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from PIL import Image
+import os.path
+
 class UnImplementedException(Exception):
     pass
 
@@ -33,18 +36,26 @@ class Node:
 
 
 class ImageNode(Node):
-    def __init__(self, sid, imageUrl, x=0, y=0):
+    def __init__(self, sid, imageUrl, width, height, x=0, y=0):
         Node.__init__(self,sid, x, y)
         self.imageurl = imageUrl
+        self.width = width
+        self.height = height
 
     def toSvg(self):
+        im = Image.open(self.imageurl)
+        im = im.resize((self.width, self.height))
+        new_url = "/home/dkm/git/visu-graph/imgcache/" + os.path.basename(self.imageurl)
+        im.save(new_url)
+
         s = """
          <image
             y="%d"
             x="%d"
             id="%s"
-            height="280"
-            width="434.28571"
+            height="%d"
+            width="%d"
             xlink:href="file://%s" />
-            """ % (self.x, self.y, self.sid, self.imageurl)
+            """ % (self.x, self.y, self.sid, 
+                   self.height, self.width,  new_url)
         return s

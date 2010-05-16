@@ -18,9 +18,10 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import visugraph.graph
-
+from PIL import Image
 import StringIO
 import sys
+import os.path
 
 ## 1 : Rank file
 ## 2 : listImage filr
@@ -28,11 +29,14 @@ import sys
 
 rankfin = open(sys.argv[1])
 imgsfin = open(sys.argv[2])
-pending_nodes = [int(sys.argv[3])]
+pending_nodes = [(int(sys.argv[3]),1)]
 
 # width and depth for visiting graph
-depth = 3
-width = 3
+graph_depth = 3
+graph_width = 3
+
+start_scale_depth = 3
+scale_factor = .75
 
 imgs = [x.strip() for x in imgsfin.xreadlines()]
 imgsfin.close()
@@ -51,26 +55,49 @@ debug = False
 posx = 0
 posy = 0
 
-for node in pending_nodes:
+used_imagesfout = open("usedimags.txt", "w")
+
+
+for node,node_depth in pending_nodes:
+    print "start of ",node, "[", node_depth, "] (", graph_depth, ") node depth:", node_depth
+
     rank_line = ranks[node].split()
     node_id = int(rank_line[0])
-    node_neighs = [int(x) for x in rank_line[1:width+1]]
+    node_neighs = [int(x) for x in rank_line[1:graph_width+1]]
 
-    if depth > 0:
-        pending_nodes += node_neighs
+    if node_depth <= graph_depth:
+        pending_nodes += [(x, node_depth+1) for x in node_neighs]
         neighs_nodes[node_id] = node_neighs
-        depth -= 1
         posx += 400
     else:
         neighs_nodes[node_id] = []
-        
-    if debug:
-        n = visugraph.graph.ImageNode(sid="node%d" % node_id, imageUrl="/home/dkm/accel.png",
-                                      x=posx, y=posy)
-    else:
-        n = visugraph.graph.ImageNode(sid="node%d" % node_id, imageUrl=imgs[node_id],
-                                      x=posx, y=posy)
+ 
+    img_url = imgs[node_id]
+    im = Image.open(img_url)
+    width, height = im.size
+    print "width,height", width, height,
+
+    if width > 200:
+        width, height = (200, height*200/width)
+
+    if node_depth >= start_scale_depth:
+        fact = 1
+        for x in xrange(node_depth - start_scale_depth + 1):
+            fact *= scale_factor
+##        fact = scale_factor*(cur_depth - start_scale_depth + 1)
+        print "[resize fact %f]" %fact,
+        width = int(width * fact)
+        height = int(height * fact)
+
+    print "... node will be", width, height
+    n = visugraph.graph.ImageNode(sid="node%d" % node_id, imageUrl=img_url,
+                                  x=posx, y=posy, width=width, height=height)
+    print >>used_imagesfout, imgs[node_id]
+
+    print "end of node", node
     nodes[node_id] = n
+
+used_imagesfout.close()
 
 for node_id, node in nodes.items():
     for neigh_node in neighs_nodes[node_id]:
@@ -175,6 +202,8 @@ sio.write("""
      id="layer1">
 """)
 
+svgout = open(sys.argv[4], "w")
+
 for node in nodes.values():
     for neigh in node.neighs:
         sio.write(getConnector(node, neigh))
@@ -184,4 +213,4 @@ sio.write(""" </g>
 </svg>
 """)
 
-print str(sio.getvalue())
+print >> svgout, str(sio.getvalue())
